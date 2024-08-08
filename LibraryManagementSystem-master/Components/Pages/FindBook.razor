@@ -1,0 +1,160 @@
+﻿@page "/"
+@using LibraryManagementSystem.Data
+@using Microsoft.Data.SqlClient;
+
+<h1>Find a Book</h1>
+
+<form>
+    <div class="form-group">
+        <label for="formGroupExampleInput">ISBN</label>
+        <input type="text" class="form-control" id="isbn" placeholder="Enter Book ISBN" @bind="@isbn">
+    </div>
+
+    <div class="form-group">
+        <label for="formGroupExampleInput2">Title</label>
+        <input type="text" class="form-control" id="title" placeholder="Enter Book Title" @bind="title">
+    </div>
+
+    <div class="form-group">
+        <label for="formGroupExampleInput">Author</label>
+        <input type="text" class="form-control" id="author" placeholder="Enter Book Author" @bind="author">
+    </div>
+
+    <div class="form-group">
+        <label for="formGroupExampleInput2">Genre</label>
+        <input type="text" class="form-control" id="genre" placeholder="Enter Book Genre" @bind="genre">
+    </div>
+
+    <br />
+
+    <a href="#" class="btn btn-primary btn-lg active" role="button" aria-pressed="true" @onclick=FindNewBook>Find Books</a>
+</form>
+<br />
+
+<div class="row">
+    @foreach (Book book in books)
+    {
+        <div class="card" style="width: 21rem;">
+            <div class="card-body">
+                <h5 class="card-title">@book.Title</h5>
+                <div class="d-flex align-items-center">
+                    <p class="card-text mb-0">ISBN: @book.Isbn</p>
+                    <button type="button" class="btn btn-secondary ms-2" @onclick="() => CopyIsbnToClipboard(book.Isbn)">Copy ISBN</button>
+                </div>
+                <p class="card-text">Quantity: @book.Quantity</p>
+                <p class="card-text">Author: @book.Author</p>
+                <p class="card-text">Genre: @book.Genre</p>
+                <p class="card-text">Description: @book.Description</p>
+            </div>
+        </div>
+    }
+</div>
+<br />
+
+@code {
+    public Book book = new Book();
+    List<Book> books = new List<Book>();
+    string isbn;
+    string title;
+    string author;
+    string genre;
+
+    public async void FindNewBook()
+    {
+        books.Clear();
+        string connectBook = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=LibraryManagementSystem;Integrated Security=True";
+        SqlConnection connect = new SqlConnection(connectBook);
+        connect.Open();
+
+        try
+        {
+            ValidateIsbn(isbn);
+
+            string sql = GenerateSqlQuery();
+
+            SqlCommand cmd = new SqlCommand(sql, connect);
+
+            SqlDataReader reader = cmd.ExecuteReader();
+
+            while (reader.Read())
+            {
+                long isbn = reader.GetInt64(0);
+                string title = reader.GetString(1);
+                string author = reader.GetString(2);
+                string genre = reader.GetString(3);
+                string description = reader.GetString(4);
+                int quantity = reader.GetInt32(5);
+                Book book = new Book(isbn, title, author, genre, description, quantity);
+                books.Add(book);
+            }
+        }
+        catch (Exception e)
+        {
+            await Application.Current.MainPage.DisplayAlert("Error", e.Message, "OK");
+        }
+        connect.Close();
+    }
+
+    public void ValidateIsbn(string isbn)
+    {
+        if (isbn != null && isbn != "")
+        {
+            string cleanedIsbn = new string(isbn.Where(char.IsDigit).ToArray());
+            if (cleanedIsbn.Length != 13)
+            {
+                throw new ArgumentException("Invalid ISBN format. It should be exactly 13 digits.");
+            }
+
+            if (!cleanedIsbn.All(char.IsDigit))
+            {
+                throw new ArgumentException("Invalid ISBN format. It should contain only digits.");
+            }
+        }
+    }
+
+    public string GenerateSqlQuery()
+    {
+        string sql = "SELECT * FROM Books";
+        List<string> conditions = new List<string>();
+
+        if (!string.IsNullOrEmpty(isbn))
+        {
+            conditions.Add($"Books.ISBN = {isbn}");
+        }
+
+        if (!string.IsNullOrEmpty(title))
+        {
+            conditions.Add($"Books.Title LIKE '%{title}%'");
+        }
+
+        if (!string.IsNullOrEmpty(author))
+        {
+            conditions.Add($"Books.Author LIKE '%{author}%'");
+        }
+
+        if (!string.IsNullOrEmpty(genre))
+        {
+            conditions.Add($"Books.Genre LIKE '%{genre}%'");
+        }
+
+        if (conditions.Count > 0)
+        {
+            sql += " WHERE " + string.Join(" AND ", conditions);
+        }
+        return sql;
+    }
+
+
+    [Inject]
+    private IJSRuntime JS { get; set; }
+
+    private async Task CopyIsbnToClipboard(long isbnToCopy)
+    {
+
+        if (!string.IsNullOrEmpty(isbnToCopy.ToString()))
+        {
+            await JS.InvokeVoidAsync("copyToClipboard", isbnToCopy);
+        }
+    }
+
+}

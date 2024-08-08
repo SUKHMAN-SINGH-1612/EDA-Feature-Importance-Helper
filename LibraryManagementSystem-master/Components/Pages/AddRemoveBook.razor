@@ -1,0 +1,71 @@
+﻿@page "/addremovebook"
+@using LibraryManagementSystem.Data
+@using Microsoft.Data.SqlClient;
+
+<h1>Add a Book</h1>
+<form>
+    <div class="form-group">
+        <label for="formGroupExampleInput">ISBN</label>
+        <input type="text" class="form-control" id="isbn" placeholder="Enter Book ISBN">
+    </div>
+
+    <div class="form-group">
+        <label for="formGroupExampleInput2">Title</label>
+        <input type="text" class="form-control" id="title" placeholder="Enter Book Title">
+    </div>
+
+    <div class="form-group">
+        <label for="formGroupExampleInput">Author</label>
+        <input type="text" class="form-control" id="author" placeholder="Enter Book Author">
+    </div>
+
+    <div class="form-group">
+        <label for="formGroupExampleInput2">Genre</label>
+        <input type="text" class="form-control" id="genre" placeholder="Enter Book Genre">
+    </div>
+
+    <div class="form-group">
+        <label for="formGroupExampleInput2">Genre</label>
+        <input type="text" class="form-control" id="quantity" placeholder="Enter Book Quantity">
+    </div>
+
+    <div class="form-group">
+        <label for="formGroupExampleInput2">Genre</label>
+        <input type="text" class="form-control" id="description" placeholder="Enter Book Description">
+    </div>
+    <br />
+
+    <a href="#" class="btn btn-primary btn-lg active" role="button" aria-pressed="true">Add Book</a>
+</form>
+<br />
+
+
+<h1>Remove a Book</h1>
+
+<form>
+    <div class="form-group">
+        <label for="formGroupExampleInput">ISBN</label>
+        <input type="text" class="form-control" id="formGroupExampleInput" placeholder="Enter Book ISBN">
+    </div>
+
+    <br />
+
+    <a href="#" class="btn btn-primary btn-lg active" role="button" aria-pressed="true">Find Book</a>
+</form>
+<br />
+
+@* Use for loop to search for book by isbn entered and display its details in link below *@
+<div class="card" style="width: 21rem;">
+    @*  <img class="card-img-top" src="..." alt="Card image cap"> *@
+    <div class="card-body">
+        <h5 class="card-title">Book title</h5>
+        <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+        <a href="#" class="btn btn-primary">Remove</a>
+    </div>
+</div>
+<br />
+
+@code {
+
+
+}

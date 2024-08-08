@@ -1,0 +1,300 @@
+﻿@page "/borrowreturnbook"
+@using LibraryManagementSystem.Data
+@using Microsoft.Data.SqlClient;
+
+<h1>Borrow a Book</h1>
+
+<form>
+    <div class="form-group">
+        <label for="formGroupExampleInput">ISBN</label>
+        <input type="text" class="form-control" id="formGroupExampleInput" @bind="isbn" placeholder="Enter Book ISBN">
+    </div>
+
+    <br />
+
+    <a class="btn btn-primary btn-lg active" role="button" aria-pressed="true" @onclick=FindNewBook>Find Book</a>
+</form>
+<br />
+
+<div class="card" style="width: 21rem;">
+    @if (isBorrowLoading)
+    {
+        <p>Loading...</p>
+    }
+    else if (borrowBooks.Count > 0)
+    {
+        @foreach (Book book in borrowBooks)
+        {
+            <div class="card" style="width: 21rem;">
+                <div class="card-body">
+                    <h5 class="card-title">@book.Title</h5>
+                    <div class="d-flex align-items-center">
+                        <p class="card-text mb-0">ISBN: @book.Isbn</p>
+                    </div>
+                    <p class="card-text">Quantity: @book.Quantity</p>
+                    <p class="card-text">Author: @book.Author</p>
+                    <p class="card-text">Genre: @book.Genre</p>
+                    <p class="card-text">Description: @book.Description</p>
+                    @if (book.IsCheckedOut)
+                    {
+                        <p class="text-success">Book checked out successfully!</p>
+                    }
+                    else
+                    {
+                        <a class="btn btn-primary" @onclick="() => CheckoutBook(book)">Checkout</a>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+<br />
+
+<h1>Return a Book</h1>
+
+<form>
+    <div class="form-group">
+        <label for="formGroupExampleInput">ISBN</label>
+        <input type="text" class="form-control" id="formGroupExampleInput" @bind="returnIsbn" placeholder="Enter Book ISBN">
+    </div>
+
+    <br />
+
+    <a class="btn btn-primary btn-lg active" role="button" aria-pressed="true" @onclick=FindReturnBook>Find Book</a>
+</form>
+<br />
+
+<div class="card" style="width: 21rem;">
+    @if (isReturnLoading)
+    {
+        <p>Loading...</p>
+    }
+    else if (returnBooks.Count > 0)
+    {
+        @foreach (Book book in returnBooks)
+        {
+            <div class="card" style="width: 21rem;">
+                <div class="card-body">
+                    <h5 class="card-title">@book.Title</h5>
+                    <div class="d-flex align-items-center">
+                        <p class="card-text mb-0">ISBN: @book.Isbn</p>
+                    </div>
+                    <p class="card-text">Quantity: @book.Quantity</p>
+                    <p class="card-text">Author: @book.Author</p>
+                    <p class="card-text">Genre: @book.Genre</p>
+                    <p class="card-text">Description: @book.Description</p>
+                    @if (book.IsReturned)
+                    {
+                        <p class="text-success">Book returned successfully!</p>
+                    }
+                    else
+                    {
+                        <a class="btn btn-primary" @onclick="() => ReturnBook(book)">Return Book</a>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+<br />
+
+@code {
+    public class Book
+    {
+        public long Isbn { get; set; }
+        public string Title { get; set; }
+        public string Author { get; set; }
+        public string Genre { get; set; }
+        public string Description { get; set; }
+        public int Quantity { get; set; }
+        public bool IsCheckedOut { get; set; } = false;
+        public bool IsReturned { get; set; } = false;
+
+        public Book(long isbn, string title, string author, string genre, string description, int quantity)
+        {
+            Isbn = isbn;
+            Title = title;
+            Author = author;
+            Genre = genre;
+            Description = description;
+            Quantity = quantity;
+        }
+    }
+
+    List<Book> borrowBooks = new List<Book>();
+    List<Book> returnBooks = new List<Book>();
+    string isbn = string.Empty;
+    string returnIsbn = string.Empty;
+    bool isBorrowLoading = false;
+    bool isReturnLoading = false;
+
+    public async void FindNewBook()
+    {
+        if (string.IsNullOrEmpty(isbn))
+        {
+            await ShowErrorMessage("Please enter an ISBN number.");
+            return;
+        }
+
+        isBorrowLoading = true;
+        borrowBooks.Clear();
+        returnBooks.Clear(); // Clear returnBooks to ensure only borrowBooks are shown
+        string connectBook = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=LibraryManagementSystem;Integrated Security=True";
+        SqlConnection connect = new SqlConnection(connectBook);
+        connect.Open();
+
+        try
+        {
+            ValidateIsbn(isbn);
+
+            string sql = "SELECT * FROM Books WHERE ISBN = @isbn";
+            SqlCommand cmd = new SqlCommand(sql, connect);
+            cmd.Parameters.AddWithValue("@isbn", isbn);
+
+            SqlDataReader reader = cmd.ExecuteReader();
+
+            while (reader.Read())
+            {
+                long isbn = reader.GetInt64(0);
+                string title = reader.GetString(1);
+                string author = reader.GetString(2);
+                string genre = reader.GetString(3);
+                string description = reader.GetString(4);
+                int quantity = reader.GetInt32(5);
+                Book book = new Book(isbn, title, author, genre, description, quantity);
+                borrowBooks.Add(book);
+            }
+        }
+        catch (Exception e)
+        {
+            await ShowErrorMessage(e.Message);
+        }
+        connect.Close();
+        isBorrowLoading = false;
+    }
+
+    public async void FindReturnBook()
+    {
+        if (string.IsNullOrEmpty(returnIsbn))
+        {
+            await ShowErrorMessage("Please enter an ISBN number.");
+            return;
+        }
+
+        isReturnLoading = true;
+        returnBooks.Clear();
+        borrowBooks.Clear(); // Clear borrowBooks to ensure only returnBooks are shown
+        string connectBook = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=LibraryManagementSystem;Integrated Security=True";
+        SqlConnection connect = new SqlConnection(connectBook);
+        connect.Open();
+
+        try
+        {
+            ValidateIsbn(returnIsbn);
+
+            string sql = "SELECT * FROM Books WHERE ISBN = @isbn";
+            SqlCommand cmd = new SqlCommand(sql, connect);
+            cmd.Parameters.AddWithValue("@isbn", returnIsbn);
+
+            SqlDataReader reader = cmd.ExecuteReader();
+
+            while (reader.Read())
+            {
+                long isbn = reader.GetInt64(0);
+                string title = reader.GetString(1);
+                string author = reader.GetString(2);
+                string genre = reader.GetString(3);
+                string description = reader.GetString(4);
+                int quantity = reader.GetInt32(5);
+                Book book = new Book(isbn, title, author, genre, description, quantity);
+                returnBooks.Add(book);
+            }
+        }
+        catch (Exception e)
+        {
+            await ShowErrorMessage(e.Message);
+        }
+        connect.Close();
+        isReturnLoading = false;
+    }
+
+    public async void CheckoutBook(Book book)
+    {
+        if (book.Quantity > 0)
+        {
+            book.Quantity -= 1;
+            string connectBook = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=LibraryManagementSystem;Integrated Security=True";
+            SqlConnection connect = new SqlConnection(connectBook);
+            connect.Open();
+
+            try
+            {
+                string sql = "UPDATE Books SET Quantity = @quantity WHERE ISBN = @isbn";
+                SqlCommand cmd = new SqlCommand(sql, connect);
+                cmd.Parameters.AddWithValue("@quantity", book.Quantity);
+                cmd.Parameters.AddWithValue("@isbn", book.Isbn);
+
+                cmd.ExecuteNonQuery();
+                book.IsCheckedOut = true; // Set the flag to true after successful checkout
+            }
+            catch (Exception e)
+            {
+                await ShowErrorMessage(e.Message);
+            }
+            connect.Close();
+        }
+        else
+        {
+            await ShowErrorMessage("No more copies available to checkout.");
+        }
+    }
+
+    public async void ReturnBook(Book book)
+    {
+        book.Quantity += 1;
+        string connectBook = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=LibraryManagementSystem;Integrated Security=True";
+        SqlConnection connect = new SqlConnection(connectBook);
+        connect.Open();
+
+        try
+        {
+            string sql = "UPDATE Books SET Quantity = @quantity WHERE ISBN = @isbn";
+            SqlCommand cmd = new SqlCommand(sql, connect);
+            cmd.Parameters.AddWithValue("@quantity", book.Quantity);
+            cmd.Parameters.AddWithValue("@isbn", book.Isbn);
+
+            cmd.ExecuteNonQuery();
+            book.IsReturned = true; // Set the flag to true after successful return
+        }
+        catch (Exception e)
+        {
+            await ShowErrorMessage(e.Message);
+        }
+        connect.Close();
+    }
+
+    public void ValidateIsbn(string isbn)
+    {
+        if (!string.IsNullOrEmpty(isbn))
+        {
+            string cleanedIsbn = new string(isbn.Where(char.IsDigit).ToArray());
+            if (cleanedIsbn.Length != 13)
+            {
+                throw new ArgumentException("Invalid ISBN format. It should be exactly 13 digits.");
+            }
+
+            if (!cleanedIsbn.All(char.IsDigit))
+            {
+                throw new ArgumentException("Invalid ISBN format. It should contain only digits.");
+            }
+        }
+    }
+
+    public async Task ShowErrorMessage(string message)
+    {
+        if (Application.Current?.MainPage != null)
+        {
+            await Application.Current.MainPage.DisplayAlert("Error", message, "OK");
+        }
+    }
+}
